@@ -2,38 +2,502 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>P2P Secret Room Chat</title>
   <!-- PeerJS CDN -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-    .chat-card { background: #1e293b; width: 100%; max-width: 480px; height: 600px; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #334155; }
-    
+    :root {
+      --bg-base: #090d16;
+      --card-bg: rgba(22, 30, 49, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-blue: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --bubble-me: #2563eb;
+      --bubble-peer: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-base);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.12) 0px, transparent 50%);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 16px;
+    }
+
+    /* Container Card */
+    .chat-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      width: 100%;
+      max-width: 520px;
+      height: 85vh;
+      max-height: 720px;
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+
     /* Header */
-    .header { background: #0f172a; padding: 14px 18px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 1.1rem; color: #38bdf8; }
-    .status-badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: #334155; color: #94a3b8; }
-    .status-badge.online { background: #065f46; color: #34d399; }
+    .header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(9, 13, 22, 0.4);
+    }
+    .header-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .header h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+    }
+    .room-tag {
+      font-size: 0.75rem;
+      color: var(--accent-blue);
+      font-weight: 500;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(148, 163, 184, 0.1);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+    .status-badge.online {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.2);
+    }
+    .status-badge.online .status-dot {
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
 
     /* Join View */
-    #joinSection { padding: 24px; display: flex; flex-direction: column; gap: 14px; justify-content: center; flex: 1; }
-    .input-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
-    input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 0.95rem; }
-    input[type="text"]:focus { outline: none; border-color: #38bdf8; }
-    button.btn { padding: 12px; border-radius: 8px; border: none; background: #2563eb; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    button.btn:hover { background: #1d4ed8; }
+    #joinSection {
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      justify-content: center;
+      flex: 1;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.6);
+      color: #fff;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    button.btn-primary {
+      margin-top: 10px;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button.btn-primary:active {
+      transform: scale(0.98);
+    }
 
     /* Chat View */
-    #chatSection { display: none; flex-direction: column; flex: 1; height: calc(100% - 53px); }
-    .messages-container { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .msg-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
-    .msg-bubble.me { align-self: flex-end; background: #2563eb; color: #fff; border-bottom-right-radius: 2px; }
-    .msg-bubble.peer { align-self: flex-start; background: #334155; color: #f1f5f9; border-bottom-left-radius: 2px; }
-    .msg-bubble.system { align-self: center; background: transparent; color: #64748b; font-size: 0.75rem; }
-    .sender-name { font-size: 0.7rem; color: #93c5fd; margin-bottom: 2px; font-weight: bold; }
+    #chatSection {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0; /* Prevents overflow issues */
+    }
+    .messages-container {
+      flex: 1;
+      padding: 20px 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+    .msg-bubble {
+      position: relative;
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      word-break: break-word;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg-bubble.me {
+      align-self: flex-end;
+      background: var(--bubble-me);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-bubble.peer {
+      align-self: flex-start;
+      background: var(--bubble-peer);
+      color: #f1f5f9;
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
+    .msg-bubble.system {
+      align-self: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      border-radius: 20px;
+      padding: 4px 12px;
+      max-width: 90%;
+      text-align: center;
+    }
+    .msg-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 3px;
+    }
+    .sender-name {
+      font-size: 0.72rem;
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+    .msg-time {
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-left: auto;
+    }
 
+    /* Input Footer */
+    .input-bar {
+      padding: 12px 16px;
+      background: rgba(9, 13, 22, 0.6);
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .input-bar input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+    }
+    .input-bar button {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent-blue);
+      color: #090d16;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .input-bar button:active {
+      opacity: 0.8;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 600px) {
+      body { padding: 0; }
+      .chat-card {
+        height: 100vh;
+        height: 100dvh;
+        max-height: none;
+        border-radius: 0;
+        border: none;
+      }
+      .header { padding: 14px 16px; }
+      #joinSection { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="chat-card">
+    <div class="header">
+      <div class="header-info">
+        <h1 id="appTitle">ଆମ Secret Chat</h1>
+        <span id="roomSubText" class="room-tag">End-to-End Encrypted</span>
+      </div>
+      <div id="statusBadge" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="statusText">Offline</span>
+      </div>
+    </div>
+
+    <!-- Join Screen -->
+    <div id="joinSection">
+      <div class="input-group">
+        <label for="username">Your Display Name</label>
+        <input type="text" id="username" placeholder="e.g., Sandeep" maxlength="20" />
+      </div>
+      <div class="input-group">
+        <label for="roomCode">Secret Room ID</label>
+        <input type="text" id="roomCode" placeholder="e.g., sg123" maxlength="30" />
+      </div>
+      <button class="btn-primary" id="joinBtn">Enter Room</button>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chatSection">
+      <div class="messages-container" id="messagesContainer"></div>
+      <div class="input-bar">
+        <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off" />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let peer = null;
+    let connections = [];
+    let myName = '';
+    let secretCode = '';
+    let isHost = false;
+    let chatHistory = []; // Holds message history for syncing
+
+    const joinBtn = document.getElementById('joinBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatInput = document.getElementById('chatInput');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const joinSection = document.getElementById('joinSection');
+    const chatSection = document.getElementById('chatSection');
+
+    function getCurrentTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    function updatePeerCount() {
+      const count = connections.length;
+      if (count > 0) {
+        statusText.textContent = `${count} Online`;
+        statusBadge.classList.add('online');
+      } else {
+        statusText.textContent = isHost ? 'Waiting...' : 'Connected';
+        statusBadge.classList.toggle('online', !isHost);
+      }
+    }
+
+    function appendMessage(sender, text, type = 'peer', time = getCurrentTime()) {
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble ${type}`;
+      
+      if (type === 'system') {
+        bubble.textContent = text;
+      } else {
+        bubble.innerHTML = `
+          <div class="msg-meta">
+            <span class="sender-name">${escapeHtml(sender)}</span>
+            <span class="msg-time">${time}</span>
+          </div>
+          <div>${escapeHtml(text)}</div>
+        `;
+      }
+      
+      messagesContainer.appendChild(bubble);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function handleIncomingData(data, senderConn) {
+      // 1. Regular Chat Message
+      if (data.type === 'chat') {
+        appendMessage(data.sender, data.text, 'peer', data.time);
+        
+        if (isHost) {
+          chatHistory.push(data);
+          // Broadcast to all other connected peers
+          connections.forEach(conn => {
+            if (conn !== senderConn && conn.open) {
+              conn.send(data);
+            }
+          });
+        }
+      } 
+      // 2. Chat History Sync (Received by newly joined peer)
+      else if (data.type === 'history-sync') {
+        data.history.forEach(item => {
+          const type = item.sender === myName ? 'me' : 'peer';
+          appendMessage(item.sender, item.text, type, item.time);
+        });
+      }
+    }
+
+    function setupConnectionEvents(conn) {
+      conn.on('open', () => {
+        if (!connections.includes(conn)) connections.push(conn);
+        updatePeerCount();
+
+        const peerName = conn.metadata?.name || 'A user';
+        appendMessage('', `${peerName} joined the room`, 'system');
+
+        // If host, transmit chat history to the newly connected peer
+        if (isHost && chatHistory.length > 0) {
+          conn.send({ type: 'history-sync', history: chatHistory });
+        }
+      });
+
+      conn.on('data', (data) => handleIncomingData(data, conn));
+
+      conn.on('close', () => {
+        connections = connections.filter(c => c !== conn);
+        updatePeerCount();
+        const peerName = conn.metadata?.name || 'A user';
+        appendMessage('', `${peerName} left`, 'system');
+      });
+    }
+
+    joinBtn.onclick = () => {
+      myName = document.getElementById('username').value.trim() || 'Anonymous';
+      secretCode = document.getElementById('roomCode').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+      if (!secretCode) {
+        alert('Please enter a valid room ID.');
+        return;
+      }
+
+      joinSection.style.display = 'none';
+      chatSection.style.display = 'flex';
+      document.getElementById('appTitle').textContent = secretCode;
+      document.getElementById('roomSubText').textContent = `Joined as ${myName}`;
+      statusText.textContent = 'Connecting...';
+
+      const hostPeerId = `p2p-room-${secretCode}-host`;
+
+      // 1. Try to claim room as Host
+      peer = new Peer(hostPeerId);
+
+      peer.on('open', () => {
+        isHost = true;
+        updatePeerCount();
+        appendMessage('', `Secret room "${secretCode}" created. Share the code with others.`, 'system');
+
+        peer.on('connection', (conn) => {
+          setupConnectionEvents(conn);
+        });
+      });
+
+      // 2. Fallback to Client Peer if host already exists
+      peer.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+          peer.destroy();
+          const clientPeer = new Peer();
+          clientPeer.on('open', () => {
+            const hostConn = clientPeer.connect(hostPeerId, {
+              metadata: { name: myName }
+            });
+            setupConnectionEvents(hostConn);
+          });
+        } else {
+          console.error(err);
+          statusText.textContent = 'Error';
+        }
+      });
+    };
+
+    function sendMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      const time = getCurrentTime();
+      const payload = { type: 'chat', sender: myName, text: text, time: time };
+      
+      if (isHost) {
+        chatHistory.push(payload);
+      }
+
+      // Broadcast payload
+      connections.forEach(conn => {
+        if (conn.open) conn.send(payload);
+      });
+
+      appendMessage(myName, text, 'me', time);
+      chatInput.value = '';
+    }
+
+    sendBtn.onclick = sendMessage;
+    chatInput.onkeydown = (e) => {
+      if (e.key === 'Enter') sendMessage();
+    };
+  </script>
+</body>
+</html>
     /* Input Footer */
     .input-bar { padding: 12px; background: #0f172a; border-top: 1px solid #334155; display: flex; gap: 8px; }
     .input-bar input { flex: 1; padding: 10px 14px; }
